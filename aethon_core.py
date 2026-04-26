@@ -5,107 +5,59 @@ import shutil
 
 class AethonEngine:
     def __init__(self, blender_path=None):
-        """
-        Aethon Engine: Blender'ı bulmak için sunucuda derin arama yapar.
-        """
         self.output_path = "aethon_output.glb"
+        # 1. Adım: Blender'ın yerini bul
+        self.blender_path = blender_path or self._find_blender()
+
+    def _find_blender(self):
+        # Önce sistem yoluna (PATH) bak
+        path = shutil.which("blender")
+        if path: return path
         
-        if blender_path:
-            self.blender_path = blender_path
-        else:
-            self.blender_path = self._find_blender_pro()
-
-    def _find_blender_pro(self):
-        system = platform.system()
-        
-        # 1. ADIM: Sistem PATH kontrolü (En hızlı yöntem)
-        path_check = shutil.which("blender")
-        if path_check:
-            return path_check
-
-        # 2. ADIM: İşletim sistemine özel bilinen tüm yollar
-        search_paths = []
-        if system == "Windows":
-            search_paths = [
-                r"C:\Program Files\Blender Foundation\Blender 3.6\blender.exe",
-                r"C:\Program Files\Blender Foundation\Blender 4.0\blender.exe",
-                r"C:\Program Files\Blender Foundation\Blender 4.1\blender.exe"
-            ]
-        elif system == "Darwin": # macOS
-            search_paths = ["/Applications/Blender.app/Contents/MacOS/Blender"]
-        else: # Linux / Streamlit Cloud
-            search_paths = [
-                "/usr/bin/blender",
-                "/usr/local/bin/blender",
-                "/usr/bin/blender-softwaregl",
-                "/usr/lib/blender",
-                "blender"
-            ]
-
-        for path in search_paths:
-            if os.path.exists(path):
-                return path
-
-        # Hiçbiri olmazsa son çare olarak sadece komut ismini döndür
-        return "blender"
+        # Linux (Streamlit) için derin arama yolları
+        linux_paths = ["/usr/bin/blender", "/usr/local/bin/blender", "/usr/bin/blender-softwaregl"]
+        for p in linux_paths:
+            if os.path.exists(p): return p
+            
+        return "blender" # Bulamazsa varsayılanı dene
 
     def generate_script(self, prompt, color_code="(0, 0.95, 1, 1)", height=10):
-        # Model üretim mantığı (Bevel ve PBR dahil)
-        is_drone = "drone" in prompt.lower()
-        is_high = any(word in prompt.lower() for word in ["yüksek", "kule", "tower", "high"])
-        
+        # 9 Puanlık Kalite: Bevel ve PBR Materyal dahil script
         script = f'''
 import bpy
-import math
-
 bpy.ops.wm.read_factory_settings(use_empty=True)
-
-def apply_pro_material(obj, name, color, metal=0.9, rough=0.2, emiss=10):
-    mat = bpy.data.materials.new(name=name)
+def apply_mat(obj, color):
+    mat = bpy.data.materials.new(name="Mat")
     mat.use_nodes = True
-    nodes = mat.node_tree.nodes
-    bsdf = nodes.get("Principled BSDF")
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
     bsdf.inputs['Base Color'].default_value = color
-    bsdf.inputs['Metallic'].default_value = metal
-    bsdf.inputs['Roughness'].default_value = rough
-    bsdf.inputs['Emission'].default_value = color
-    bsdf.inputs['Emission Strength'].default_value = emiss
+    bsdf.inputs['Metallic'].default_value = 0.9
+    bsdf.inputs['Roughness'].default_value = 0.2
     obj.data.materials.append(mat)
 
-if {is_drone}:
-    bpy.ops.mesh.primitive_cube_add(size=1, location=(0,0,1))
-    main_obj = bpy.context.object
-    main_obj.scale = (1.5, 1, 0.2)
-else:
-    h = {height} if {is_high} else 4
-    bpy.ops.mesh.primitive_cube_add(size=1, location=(0,0,h/2))
-    main_obj = bpy.context.object
-    main_obj.scale = (2, 2, h)
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0,0,{height}/2))
+obj = bpy.context.object
+obj.scale = (2, 2, {height})
 
-# Kalite Ayarı: Bevel
-bev = main_obj.modifiers.new(name="Bevel", type='BEVEL')
+# Bevel Modificator
+bev = obj.modifiers.new(name="B", type='BEVEL')
 bev.width = 0.05
-bev.segments = 5
-bpy.ops.object.modifier_apply(modifier="Bevel")
+bpy.ops.object.modifier_apply(modifier="B")
 
-apply_pro_material(main_obj, "AethonSurface", {color_code})
+apply_mat(obj, {color_code})
 bpy.ops.export_scene.gltf(filepath="{self.output_path}", export_format='GLB')
 '''
-        with open("temp_engine.py", "w", encoding="utf-8") as f:
+        with open("temp_engine.py", "w") as f:
             f.write(script)
 
     def run(self):
         try:
-            result = subprocess.run(
-                [self.blender_path, "-b", "-P", "temp_engine.py"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
+            # -b: Arka plan, -P: Script çalıştır
+            subprocess.run([self.blender_path, "-b", "-P", "temp_engine.py"], 
+                           capture_output=True, text=True, check=True)
             return self.output_path
         except Exception as e:
-            # HATA DURUMUNDA BURASI ÇALIŞIR VE LOGLARA YAZAR
-            print(f"--- AETHON TEŞHİS RAPORU ---")
-            print(f"Kullanılan Blender Yolu: {self.blender_path}")
-            print(f"Sistem Hatası: {e}")
+            # Hata detayını terminale (loglara) bas
+            print(f"DEBUG: Blender Yolu -> {self.blender_path}")
+            print(f"DEBUG: Hata Mesajı -> {e}")
             return None
