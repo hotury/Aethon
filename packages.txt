@@ -1,3 +1,4 @@
 blender
+python3-numpy
 libgl1
 libegl1
