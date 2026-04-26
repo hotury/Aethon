@@ -18,12 +18,12 @@ class AethonEngine:
     def _find_blender_pro(self):
         system = platform.system()
         
-        # 1. YOL: Sistem PATH kontrolü (shutil)
+        # 1. ADIM: Sistem PATH kontrolü (En hızlı yöntem)
         path_check = shutil.which("blender")
         if path_check:
             return path_check
 
-        # 2. YOL: İşletim sistemine özel bilinen tüm yollar
+        # 2. ADIM: İşletim sistemine özel bilinen tüm yollar
         search_paths = []
         if system == "Windows":
             search_paths = [
@@ -46,10 +46,11 @@ class AethonEngine:
             if os.path.exists(path):
                 return path
 
-        # Hiçbiri olmazsa son çare
+        # Hiçbiri olmazsa son çare olarak sadece komut ismini döndür
         return "blender"
 
     def generate_script(self, prompt, color_code="(0, 0.95, 1, 1)", height=10):
+        # Model üretim mantığı (Bevel ve PBR dahil)
         is_drone = "drone" in prompt.lower()
         is_high = any(word in prompt.lower() for word in ["yüksek", "kule", "tower", "high"])
         
@@ -81,7 +82,7 @@ else:
     main_obj = bpy.context.object
     main_obj.scale = (2, 2, h)
 
-# 9 PUANLIK KALİTE: Bevel
+# Kalite Ayarı: Bevel
 bev = main_obj.modifiers.new(name="Bevel", type='BEVEL')
 bev.width = 0.05
 bev.segments = 5
@@ -95,7 +96,6 @@ bpy.ops.export_scene.gltf(filepath="{self.output_path}", export_format='GLB')
 
     def run(self):
         try:
-            # Komutu tam yol ile çalıştırıyoruz
             result = subprocess.run(
                 [self.blender_path, "-b", "-P", "temp_engine.py"],
                 capture_output=True,
@@ -104,8 +104,8 @@ bpy.ops.export_scene.gltf(filepath="{self.output_path}", export_format='GLB')
             )
             return self.output_path
         except Exception as e:
-            # Hata olduğunda terminale tam olarak neyin yanlış olduğunu yazar
-            print(f"--- AETHON HATA RAPORU ---")
-            print(f"Denenen Blender Yolu: {self.blender_path}")
-            print(f"Hata Mesajı: {e}")
+            # HATA DURUMUNDA BURASI ÇALIŞIR VE LOGLARA YAZAR
+            print(f"--- AETHON TEŞHİS RAPORU ---")
+            print(f"Kullanılan Blender Yolu: {self.blender_path}")
+            print(f"Sistem Hatası: {e}")
             return None
