@@ -1,50 +1,73 @@
 import streamlit as st
-from aethon_core import AethonEngine
 import os
+import shutil
+from aethon_core import AethonEngine
 
-# Sayfa Ayarları
-st.set_page_config(page_title="AETHON AI", page_icon="🛸", layout="wide")
+# --- SAYFA AYARLARI ---
+st.set_page_config(page_title="Aethon 3D AI", page_icon="🛸")
+st.title("🛸 Aethon 3D Tasarım Motoru")
+st.write("Doğal dil ile 3D modeller oluşturun.")
 
-# Aethon Engine'i Başlat
-# Not: Localde çalıştırırken blender_path'i kendi bilgisayarına göre güncellemelisin.
-engine = AethonEngine(blender_path="blender") 
+# --- SİSTEM KONTROLÜ (KRİTİK) ---
+# Streamlit Cloud'un Blender'ı kurup kurmadığını kontrol eder
+blender_exists = shutil.which("blender")
 
-st.title("🛸 AETHON 3D Generator")
-st.write("Hayalindeki tasarımı yaz, AI saniyeler içinde 3D modelini oluştursun.")
+if not blender_exists:
+    st.error("⚠️ HATA: Blender sunucuda bulunamadı!")
+    st.info("""
+    **Çözüm Adımları:**
+    1. GitHub reponda **packages.txt** adında bir dosya olduğundan emin ol.
+    2. İçinde sadece **blender** yazdığından emin ol.
+    3. Streamlit Cloud panelinden 'Reboot App' yap veya uygulamayı silip baştan kur.
+    """)
+else:
+    st.success("✅ Blender Motoru Hazır!")
 
-# Kullanıcı Girişi
+# --- KULLANICI ARAYÜZÜ ---
 with st.sidebar:
-    st.header("Tasarım Parametreleri")
-    color = st.color_picker("Neon Rengi Seç", "#00F2FF")
-    # Streamlit renk kodunu Blender formatına çevir (0-1 aralığı)
-    r = int(color[1:3], 16) / 255
-    g = int(color[3:5], 16) / 255
-    b = int(color[5:7], 16) / 255
-    blender_color = f"({r}, {g}, {b}, 1)"
+    st.header("Tasarım Ayarları")
+    color = st.color_picker("Model Rengi", "#00F2FF")
+    height = st.slider("Yükseklik (Mimari için)", 1, 20, 10)
+    
+    # RGB formatına çevirme (Blender için 0-1 arası)
+    hex_color = color.lstrip('#')
+    rgb = tuple(int(hex_color[i:i+2], 16)/255 for i in (0, 2, 4))
+    blender_color = f"({rgb[0]}, {rgb[1]}, {rgb[2]}, 1)"
 
-prompt = st.text_input("Ne üretmek istersin?", placeholder="Örn: Agresif bir drone...")
+prompt = st.text_input("Ne inşa etmek istersin?", placeholder="Örn: Modern bir kule veya fütüristik bir drone")
 
-if st.button("İNŞA ET"):
-    if prompt:
-        with st.spinner("Aethon Motoru çalışıyor..."):
-            # 1. Scripti Oluştur
-            engine.generate_script(prompt, color_code=blender_color)
+if st.button("🚀 TASARLA VE İNŞA ET"):
+    if not prompt:
+        st.warning("Lütfen bir komut girin.")
+    elif not blender_exists:
+        st.error("Blender yüklü olmadığı için işlem başlatılamıyor.")
+    else:
+        with st.spinner("Aethon Motoru çalışıyor, 3D model üretiliyor..."):
+            # Motoru başlat
+            engine = AethonEngine()
             
-            # 2. Blender'ı Çalıştır
+            # Script oluştur ve çalıştır
+            engine.generate_script(prompt, color_code=blender_color, height=height)
             output_file = engine.run()
             
             if output_file and os.path.exists(output_file):
-                st.success("Tasarım Başarıyla Oluşturuldu!")
+                st.balloons()
+                st.success("Tasarım başarıyla tamamlandı!")
                 
-                # 3. Modeli İndirme Butonu
+                # Modeli indir
                 with open(output_file, "rb") as f:
                     st.download_button(
-                        label="📦 .GLB Dosyasını İndir",
+                        label="📦 3D Modeli İndir (.GLB)",
                         data=f,
-                        file_name="aethon_output.glb",
+                        file_name="aethon_model.glb",
                         mime="model/gltf-binary"
                     )
+                
+                st.info("İpucu: İndirdiğin dosyayı Blender'da veya online 'GLB Viewer' sitelerinde görüntüleyebilirsin.")
             else:
-                st.error("Hata: Blender çalıştırılamadı. Yolun doğru olduğundan emin olun.")
-    else:
-        st.warning("Lütfen bir prompt girin.")
+                st.error("Model üretiminde bir sorun oluştu. Lütfen logları kontrol et.")
+                st.info("Hata detayı için sağ alttaki 'Manage app > Logs' kısmına bakabilirsin.")
+
+# Alt Bilgi
+st.divider()
+st.caption("Aethon v1.0 | 9 Puanlık Kalite Standartları Aktif (Bevel & PBR)")
