@@ -37,16 +37,15 @@ def apply_pro_material(obj, name, color, metal=0.9, rough=0.2, emiss=0.5):
         bsdf.inputs['Roughness'].default_value = rough
     obj.data.materials.append(mat)
 
-# --- AI TARAFINDAN ÜRETİLEN GEOMETRİ ---
+# --- AI'NIN ÜRETTİĞİ GEOMETRİ KODU ---
 {ai_mesh_code}
-# --- GEOMETRİ BİTİŞ ---
 
-# Akıllandırma: Sahnedeki tüm objeleri tara ve materyalini uygula
+# AKILLI GÜNCELLEME: Sahnedeki tüm mesh objelerini tara ve materyalini uygula
 for obj in bpy.context.scene.objects:
     if obj.type == 'MESH':
         apply_pro_material(obj, f"Mat_{{obj.name}}", (0, 0.95, 1, 1))
 
-# GLB olarak dışa aktar
+# Çıktı al
 bpy.ops.export_scene.gltf(filepath="{self.output_path}", export_format='GLB')
 '''
         with open("temp_engine.py", "w", encoding="utf-8") as f:
@@ -54,8 +53,7 @@ bpy.ops.export_scene.gltf(filepath="{self.output_path}", export_format='GLB')
 
     def run(self):
         try:
-            result = subprocess.run([self.blender_path, "-b", "-P", "temp_engine.py"], 
-                                    capture_output=True, text=True, check=True)
+            subprocess.run([self.blender_path, "-b", "--factory-startup", "-P", "temp_engine.py"], capture_output=True, text=True, check=True)
             return self.output_path
         except Exception as e:
             print(f"Aethon Motor Hatası: {{e}}")
