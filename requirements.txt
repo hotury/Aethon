@@ -1,2 +1,5 @@
 streamlit
-numpy
+transformers
+torch
+accelerate
+huggingface_hub
