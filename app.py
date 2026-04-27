@@ -1,37 +1,37 @@
-import streamlit as st
-from aethon_core import AethonEngine
 from transformers import pipeline
+import torch
+from google.colab import files
 import os
 
-# Sayfa Ayarı
-st.set_page_config(page_title="Aethon 3D", layout="wide")
+# 1. AI Motorunu Hazırla (Beyin)
+print("🧠 Aethon Beyni Hazırlanıyor...")
+pipe = pipeline("text-generation", model="Qwen/Qwen2-0.5B-Instruct", device_map="auto")
 
-# AI Modeli Yükle (Hafif ve hızlı sürüm)
-@st.cache_resource
-def load_ai():
-    return pipeline("text-generation", model="Qwen/Qwen2-0.5B-Instruct", device_map="auto")
-
-pipe = load_ai()
+# 2. Senin Güncellediğin Core'u Başlat
+# aethon_core.py dosyasının yüklü olduğundan emin ol
+from aethon_core import AethonEngine
 engine = AethonEngine()
 
-st.title("🛸 Aethon v4.0 Tasarım Paneli")
+def build_smart_3d():
+    user_req = input("\n🛸 Ne inşa edelim? (Örn: 'Modern bir drone'): ")
+    
+    # AI'ya sadece mesh (geometri) kısmını yazdırıyoruz
+    prompt = f"<|im_start|>user\nWrite ONLY the Blender Python code to create the mesh for: {user_req}. Use 'bpy.ops.mesh' commands. Do not include imports or exports.<|im_end|>\n<|im_start|>assistant\n"
+    
+    print("🧠 AI Tasarlıyor...")
+    output = pipe(prompt, max_new_tokens=500, do_sample=True, temperature=0.4)
+    ai_mesh_code = output[0]['generated_text'].split("<|im_start|>assistant\n")[-1].split("```")[0].strip()
 
-user_req = st.text_input("Ne inşa etmek istersin?", placeholder="Örn: Modern bir drone")
+    # Core motoru AI koduyla besle
+    print("🛠️ Blender İnşa Ediyor...")
+    engine.generate_script(ai_mesh_code)
+    output_file = engine.run()
 
-if st.button("İnşa Et"):
-    with st.spinner("AI tasarlıyor ve Blender çiziyor..."):
-        # AI sadece mesh kodunu yazar
-        prompt = f"<|im_start|>user\nWrite ONLY Blender Python mesh code for: {user_req}. No imports.<|im_end|>\n<|im_start|>assistant\n"
-        ai_output = pipe(prompt, max_new_tokens=500)
-        mesh_code = ai_output[0]['generated_text'].split("assistant\n")[-1].split("```")[0].strip()
+    if output_file and os.path.exists(output_file):
+        print(f"🚀 BAŞARILI! {output_file} indiriliyor...")
+        files.download(output_file)
+    else:
+        print("⚠️ Hata oluştu. AI kodunu kontrol et:\n", ai_mesh_code)
 
-        # Motoru çalıştır
-        engine.generate_script(mesh_code)
-        output_file = engine.run()
-
-        if output_file and os.path.exists(output_file):
-            st.success("İnşaat Tamamlandı!")
-            with open(output_file, "rb") as f:
-                st.download_button("📥 3D Modeli İndir", f, file_name="aethon_model.glb")
-        else:
-            st.error("Bir hata oluştu.")
+# Çalıştır
+build_smart_3d()
