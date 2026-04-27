@@ -13,20 +13,17 @@ class AethonEngine:
             elif system == "Darwin":
                 self.blender_path = "/Applications/Blender.app/Contents/MacOS/Blender"
             else:
-                self.blender_path = "blender" # Colab için standart yol
+                self.blender_path = "blender"
         
         self.output_path = "aethon_output.glb"
 
     def generate_script(self, ai_mesh_code):
-        # AI'dan gelen kodu senin profesyonel şablonuna gömüyoruz
         script = f'''
 import bpy
 import math
 
-# Sahneyi temizle
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
-# Senin profesyonel materyal fonksiyonun
 def apply_pro_material(obj, name, color, metal=0.9, rough=0.2, emiss=0.5):
     mat = bpy.data.materials.new(name=name)
     mat.use_nodes = True
@@ -38,15 +35,12 @@ def apply_pro_material(obj, name, color, metal=0.9, rough=0.2, emiss=0.5):
         bsdf.inputs['Roughness'].default_value = rough
     obj.data.materials.append(mat)
 
-# --- AI'NIN ÜRETTİĞİ GEOMETRİ KODU BAŞLANGICI ---
+# AI tarafından üretilen kod buraya yerleşir
 {ai_mesh_code}
-# --- AI'NIN ÜRETTİĞİ GEOMETRİ KODU BİTİŞİ ---
 
-# Aktif objeye materyal uygula (Senin imzan)
 if bpy.context.active_object:
     apply_pro_material(bpy.context.active_object, "AethonSurface", (0, 0.95, 1, 1))
 
-# Çıktı al
 bpy.ops.export_scene.gltf(filepath="{self.output_path}", export_format='GLB')
 '''
         with open("temp_engine.py", "w", encoding="utf-8") as f:
@@ -54,9 +48,7 @@ bpy.ops.export_scene.gltf(filepath="{self.output_path}", export_format='GLB')
 
     def run(self):
         try:
-            # Blender'ı arka planda çalıştır
-            result = subprocess.run([self.blender_path, "-b", "--factory-startup", "-P", "temp_engine.py"], 
-                                    capture_output=True, text=True, check=True)
+            subprocess.run([self.blender_path, "-b", "-P", "temp_engine.py"], capture_output=True, text=True, check=True)
             return self.output_path
         except Exception as e:
             print(f"Aethon Motor Hatası: {{e}}")
